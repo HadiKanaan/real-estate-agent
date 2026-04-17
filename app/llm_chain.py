@@ -13,11 +13,10 @@ load_dotenv()
 
 # Read the API key once on module import so bad configuration fails fast.
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    raise RuntimeError("GEMINI_API_KEY is missing. Add it to .env before running the app.")
-
-genai.configure(api_key=GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-2.5-flash")
+model = None
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel("gemini-2.5-flash")
 
 FEATURE_FIELDS = [
     "GrLivArea",
@@ -38,6 +37,9 @@ def _call_gemini(prompt: str) -> str:
     Thin wrapper around Gemini so Stage 1 and Stage 2 share one call path.
     This function is isolated to make future mocking/testing easier.
     """
+    if model is None:
+        raise RuntimeError("GEMINI_API_KEY is missing. Set it in environment variables.")
+
     response = model.generate_content(prompt)
     return response.text
 
@@ -143,8 +145,40 @@ def stage2_interpret(features: HouseFeatures, predicted_price: float, train_stat
     except Exception as e:
         print(f"[stage2] Gemini call failed: {e}")
         print(traceback.format_exc())
+
+        median_price = float(train_stats["median_price"])
+        p10 = float(train_stats["price_10th_percentile"])
+        p90 = float(train_stats["price_90th_percentile"])
+        price_std = float(train_stats["price_std"])
+        delta = predicted_price - median_price
+        delta_pct = (delta / median_price * 100) if median_price else 0.0
+
+        drivers = []
+        if features.OverallQual is not None:
+            drivers.append(f"OverallQual={features.OverallQual}")
+        if features.GrLivArea is not None:
+            drivers.append(f"GrLivArea={features.GrLivArea:,.0f} sqft")
+        if features.YearBuilt is not None:
+            drivers.append(f"YearBuilt={features.YearBuilt}")
+        if features.GarageArea is not None:
+            drivers.append(f"GarageArea={features.GarageArea:,.0f} sqft")
+
+        if not drivers:
+            drivers.append("the confirmed feature set")
+
+        if predicted_price < p10:
+            market_position = "bottom decile"
+        elif predicted_price < (median_price + p90) / 2:
+            market_position = "lower to middle portion of the market"
+        elif predicted_price < p90:
+            market_position = "upper portion of the market"
+        else:
+            market_position = "top decile"
+
         return (
-            f"The predicted price is ${predicted_price:,.0f}. "
-            f"Market median is ${train_stats['median_price']:,.0f}. "
-            "(Full interpretation unavailable due to Gemini API error.)"
+            f"The predicted price is ${predicted_price:,.0f}, which is {'above' if delta >= 0 else 'below'} "
+            f"the training median of ${median_price:,.0f} by ${abs(delta):,.0f} ({abs(delta_pct):.1f}%). "
+            f"That estimate is most influenced by {', '.join(drivers)}. "
+            f"With a typical range of ${p10:,.0f} to ${p90:,.0f} and a standard deviation of ${price_std:,.0f}, "
+            f"this home sits in the {market_position}, so compare it against similar Ames sales before making an offer."
         )

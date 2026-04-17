@@ -1,0 +1,57 @@
+# Docker Compose configuration for local development and testing.
+# This allows you to run both backend (FastAPI) and frontend (Streamlit) together
+# and verify the two-stage prompt chain end-to-end before deploying to Railway.
+
+version: '3.8'
+
+services:
+  # Backend API service (FastAPI + ML model + Gemini integration)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8000"  # Map container port 8000 to host port 8002
+    environment:
+      # Note: Pass GEMINI_API_KEY as a build-time secret or runtime secret for security.
+      # For local development, it can be read from .env file.
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    volumes:
+      # Optional: for hot-reloading during development (comment out for production)
+      - ./app:/app/app
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - real-estate-network
+
+  # Frontend UI service (Streamlit)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    ports:
+      - "8501:8501"  # Streamlit runs on 8501 by default
+    environment:
+      # Backend URL: use service name 'backend' for container-to-container networking
+      # In local docker-compose, this resolves to http://backend:8000
+      API_URL: http://backend:8000
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    depends_on:
+      backend:
+        condition: service_healthy  # Wait for backend health check before starting
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - real-estate-network
+
+networks:
+  real-estate-network:
+    driver: bridge

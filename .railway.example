@@ -1,0 +1,21 @@
+# Environment template for Railway deployment.
+# Copy this to .env and fill in your actual values.
+# IMPORTANT: Never commit real secrets to Git. Use Railway's environment variable UI instead.
+
+# Google Gemini API key for Stage 1 extraction and Stage 2 interpretation.
+# Get this from: https://aistudio.google.com/app/apikeys
+GEMINI_API_KEY=your_actual_api_key_here
+
+# Backend API URL - automatically set by Railway for inter-service communication
+# For local development: http://localhost:8000
+# For Railway: https://backend-service-url.railway.app
+# For docker-compose: http://backend:8000
+API_URL=http://localhost:8002
+
+# Optional: Streamlit configuration
+STREAMLIT_SERVER_HEADLESS=true
+STREAMLIT_SERVER_PORT=8501
+STREAMLIT_SERVER_ADDRESS=0.0.0.0
+
+# Optional: FastAPI configuration
+LOG_LEVEL=info
