@@ -1,46 +1,7 @@
-# Railway.app deployment configuration for the AI Real Estate Agent.
-# This file defines how the project is built and deployed on Railway.
-# Reference: https://docs.railway.app/deploy/config-as-code
-
 [build]
-# Dockerfile to use for the backend service.
-# The custom Dockerfile builds the FastAPI backend with the ML model and Gemini integration.
-dockerfile = "Dockerfile"
-# Build context: use the entire repository
+dockerfile = "Dockerfile.railway"
 context = "."
 
 [deploy]
-# Restarts the service if it crashes.
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
-
-[env]
-# Environment variables for Railway deployment.
-# Note: Use Railway's environment variable management UI for sensitive values like GEMINI_API_KEY.
-
-# Port: FastAPI runs on 8000 inside the container.
-# Railway will expose this through its edge network.
-PORT = "8000"
-
-# Streamlit UI runs on a separate service.
-# For local/railroad connections, this would be set per service.
-STREAMLIT_PORT = "8501"
-
-[services]
-# Backend service configuration
-[services.backend]
-build = { dockerfile = "Dockerfile" }
-port = 8000
-# Command to run: uvicorn serves the FastAPI app
-cmd = "uvicorn app.main:app --host 0.0.0.0 --port 8000"
-
-# Frontend service configuration
-[services.frontend]
-build = { dockerfile = "Dockerfile.streamlit" }
-port = 8501
-# Streamlit entrypoint
-cmd = "streamlit run ui/streamlit_app.py --logger.level=error --client.showErrorDetails=false"
-# Frontend needs to know the backend URL; set this in Railway environment variables.
-env = { API_URL = "https://${{ services.backend.url }}" }
-# Ensure frontend can reach backend before starting
-depends_on = ["backend"]
