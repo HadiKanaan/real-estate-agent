@@ -17,4 +17,4 @@ EXPOSE 8501
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD bash -lc 'curl -fsS "http://127.0.0.1:${PORT:-8501}/_stcore/health" || exit 1'
 
-CMD ["/app/start_railway.sh"]
+CMD ["bash", "/app/start_railway.sh"]

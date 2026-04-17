@@ -9,6 +9,13 @@ export API_URL="${API_URL:-http://127.0.0.1:${BACKEND_PORT}}"
 
 echo "[railway] Starting backend on ${BACKEND_PORT}"
 uvicorn app.main:app --host 127.0.0.1 --port "${BACKEND_PORT}" &
+BACKEND_PID=$!
+
+sleep 2
+if ! kill -0 "${BACKEND_PID}" 2>/dev/null; then
+  echo "[railway] Backend failed to start"
+  wait "${BACKEND_PID}"
+fi
 
 echo "[railway] Starting frontend on ${FRONTEND_PORT}"
 exec streamlit run ui/streamlit_app.py \
