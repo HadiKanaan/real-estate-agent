@@ -1,10 +1,32 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse
 
 from app.llm_chain import stage1_extract, stage2_interpret
 from app.predictor import predict, train_stats
 from app.schemas import AgentResponse, ExtractionResult, PredictionRequest
 
 app = FastAPI(title="AI Real Estate Agent")
+
+
+@app.get("/", response_class=HTMLResponse)
+def root() -> str:
+        """Human-friendly landing page for direct browser visits to the backend service."""
+        return """
+        <html>
+            <head><title>AI Real Estate Agent API</title></head>
+            <body style=\"font-family: Arial, sans-serif; max-width: 760px; margin: 40px auto; line-height: 1.5;\">
+                <h1>AI Real Estate Agent API</h1>
+                <p>This is the backend API service, not the Streamlit frontend UI.</p>
+                <p>Use these endpoints:</p>
+                <ul>
+                    <li><a href=\"/health\">/health</a></li>
+                    <li><a href=\"/docs\">/docs</a> (interactive API docs)</li>
+                    <li>POST /extract</li>
+                    <li>POST /predict</li>
+                </ul>
+            </body>
+        </html>
+        """
 
 
 @app.get("/health")
